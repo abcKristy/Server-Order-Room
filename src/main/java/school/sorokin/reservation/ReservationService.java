@@ -1,5 +1,6 @@
 package school.sorokin.reservation;
 
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -22,30 +23,17 @@ public class ReservationService {
     }
 
     public Reservation getReservationById(Long id){
-
-
-        Optional<ReservationEntity> find = repositiry.findById(id);
-
-
-
-        if(!reservationMap.containsKey(id)){
-            throw new NoSuchElementException("Not found reservation by id = "+id);
-        }
-        return reservationMap.get(id);
+        ReservationEntity reservationEntity = repositiry.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Not found reservation by id = "+id
+        ));
+        return toDomainReservation(reservationEntity);
     }
 
     public List<Reservation> findAllReservations() {
         List<ReservationEntity> allEnitities = repositiry.findAll();
         return allEnitities.stream().map
-                (it -> new Reservation(
-                        it.getId(),
-                        it.getUserId(),
-                        it.getRoomId(),
-                        it.getStartDate(),
-                        it.getEndDate(),
-                        it.getStatus()
-
-        )).toList();
+                (this::toDomainReservation).toList();
     }
 
     public Reservation createReservation(Reservation reservationToCreate) {
@@ -133,5 +121,15 @@ public class ReservationService {
             }
         }
         return false;
+    }
+
+    private Reservation toDomainReservation(ReservationEntity reservation){
+        return new Reservation(
+                reservation.getId(),
+                reservation.getUserId(),
+                reservation.getRoomId(),
+                reservation.getStartDate(),
+                reservation.getEndDate(),
+                reservation.getStatus());
     }
 }
