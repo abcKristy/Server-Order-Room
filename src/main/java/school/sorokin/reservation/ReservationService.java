@@ -1,12 +1,10 @@
 package school.sorokin.reservation;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
@@ -15,12 +13,21 @@ public class ReservationService {
     private final Map<Long,Reservation> reservationMap;
     private final AtomicLong idCounter;
 
-    public ReservationService() {
+    private final ReservationRerository repositiry;
+
+    public ReservationService(ReservationRerository repositiry) {
+        this.repositiry = repositiry;
         this.idCounter = new AtomicLong();
         this.reservationMap = new HashMap<>();
     }
 
     public Reservation getReservationById(Long id){
+
+
+        Optional<ReservationEntity> find = repositiry.findById(id);
+
+
+
         if(!reservationMap.containsKey(id)){
             throw new NoSuchElementException("Not found reservation by id = "+id);
         }
@@ -28,7 +35,17 @@ public class ReservationService {
     }
 
     public List<Reservation> findAllReservations() {
-        return reservationMap.values().stream().toList();
+        List<ReservationEntity> allEnitities = repositiry.findAll();
+        return allEnitities.stream().map
+                (it -> new Reservation(
+                        it.getId(),
+                        it.getUserId(),
+                        it.getRoomId(),
+                        it.getStartDate(),
+                        it.getEndDate(),
+                        it.getStatus()
+
+        )).toList();
     }
 
     public Reservation createReservation(Reservation reservationToCreate) {
