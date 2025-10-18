@@ -1,5 +1,6 @@
 package school.sorokin.reservation.reservations;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -31,5 +32,16 @@ public interface ReservationRerository extends JpaRepository<ReservationEntity,L
             @Param("startDate")LocalDate startDate,
             @Param("endDate")LocalDate endDate,
             @Param("status")ReservationStatus status
+    );
+
+    @Query("""
+            select r from ReservationEntity r
+            where (:roomId is null or r.roomId = :roomId)
+            and (:userId is null or r.userId = :userId)
+            """)
+    List<ReservationEntity> searchAllByFilter(
+            @Param("roomId") Long roomId,
+            @Param("userId") Long userId,
+            Pageable pageable
     );
 }
