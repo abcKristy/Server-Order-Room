@@ -32,11 +32,11 @@ public class ReservationService {
     }
 
     public Reservation createReservation(Reservation reservationToCreate) {
-        if(reservationToCreate.id()!=null){
-            throw new IllegalArgumentException("Id should be empty ");
-        }
         if(reservationToCreate.status()!=null){
             throw new IllegalArgumentException("Status should be empty ");
+        }
+        if(!reservationToCreate.endDate().isAfter(reservationToCreate.startDate())){
+            throw new IllegalArgumentException("start should to be before end");
         }
         var entityToSave = new ReservationEntity(
                 null,
@@ -53,11 +53,16 @@ public class ReservationService {
     public Reservation updateReservation(Long id, Reservation reservationToUpdate) {
         var reservationEntity = repositiry.findById(id)
                 .orElseThrow(()->new NoSuchElementException("Not found reservation by id = "+id));
-
-
         if(reservationEntity.getStatus()!=ReservationStatus.PENDING){
             throw new IllegalArgumentException("cannot modify reservation status " + reservationEntity.getStatus());
         }
+        if(!reservationToUpdate.endDate().isAfter(reservationToUpdate.startDate())){
+            throw new IllegalArgumentException("start should to be before end");
+        }
+        var isConflict = isReservationConflict(reservationEntity);
+        if(isConflict)
+            throw new IllegalArgumentException("cannot approve because of conflict ");
+
         var reservationToSave = new ReservationEntity(
                 reservationEntity.getId(),
                 reservationToUpdate.userId(),
@@ -72,8 +77,14 @@ public class ReservationService {
 
     @Transactional
     public void cancelReservation(Long id) {
-        if(!repositiry.existsById(id))
-            throw new NoSuchElementException("Not found reservation by id = "+id);
+        var reservation = repositiry.findById(id)
+                        .orElseThrow(()-> new EntityNotFoundException("Not found reservation by id = "+id));
+        if(reservation.getStatus().equals(ReservationStatus.APPROVED)){
+            throw new IllegalStateException("can not canceled reservation without manager");
+        }
+        if(reservation.getStatus().equals(ReservationStatus.CANCELED)){
+            throw new IllegalStateException("can not cancel reservation, it was already cancelled");
+        }
         repositiry.setStatus(id, ReservationStatus.CANCELED);
         log.info("successfully canceled reservation by id "+ id);
     }

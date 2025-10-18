@@ -1,5 +1,6 @@
 package school.sorokin.reservation;
 
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -26,13 +27,9 @@ public class ReservationController {
             @PathVariable("id") Long  id
     ) {
         log.info("called getReservationById");
-        try{
-            return ResponseEntity
-                    .status(HttpStatus.OK)
-                    .body(reservationService.getReservationById(id));
-        }catch (NoSuchElementException e){
-            return ResponseEntity.status(404).build();
-        }
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(reservationService.getReservationById(id));
     }
     @GetMapping
     public ResponseEntity<List<Reservation>> getAllReservations() {
@@ -42,7 +39,7 @@ public class ReservationController {
 
     @PostMapping
     public ResponseEntity<Reservation> createReservation(
-            @RequestBody Reservation reservationToCreate
+            @RequestBody @Valid Reservation reservationToCreate
     ){
         log.info("called createReservation");
         return ResponseEntity
@@ -53,7 +50,7 @@ public class ReservationController {
     @PutMapping("/{id}")
     public ResponseEntity<Reservation> updateReservation(
             @PathVariable("id") Long id,
-            @RequestBody Reservation reservationToUpdate
+            @RequestBody @Valid Reservation reservationToUpdate
     ){
         log.info("called updateReservation id={}, reservationToUpdate={}",
                 id, reservationToUpdate);
@@ -67,12 +64,9 @@ public class ReservationController {
             @PathVariable("id") Long id
     ){
         log.info("called deleteReservation id={}", id);
-        try{
-            reservationService.cancelReservation(id);
-            return ResponseEntity.ok().build();
-        }catch (NoSuchElementException e){
-            return ResponseEntity.status(404).build();
-        }
+        reservationService.cancelReservation(id);
+        return ResponseEntity.ok().build();
+
 
     }
 
