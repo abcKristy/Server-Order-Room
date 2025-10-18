@@ -6,23 +6,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import school.sorokin.reservation.reservations.availability.ReservationAvailabilityService;
 
-import java.time.LocalDate;
 import java.util.*;
 
 @Service
 public class ReservationService {
     private static final Logger log = LoggerFactory.getLogger(ReservationService.class);
-    private final ReservationRerository repositiry;
+    private final ReservationRepository repository;
     private final ReservationMapper mapper;
+    private final ReservationAvailabilityService availabilityService;
 
-    public ReservationService(ReservationRerository repositiry, ReservationMapper mapper) {
-        this.repositiry = repositiry;
+    public ReservationService(ReservationRepository repositiry, ReservationMapper mapper, ReservationAvailabilityService availabilityService) {
+        this.repository = repositiry;
         this.mapper = mapper;
+        this.availabilityService = availabilityService;
     }
 
     public Reservation getReservationById(Long id){
-        ReservationEntity reservationEntity = repositiry.findById(id)
+        ReservationEntity reservationEntity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Not found reservation by id = "+id
         ));
@@ -40,7 +42,7 @@ public class ReservationService {
                 .ofSize(pageSize)
                 .withPage(pageNumber);
 
-        List<ReservationEntity> allEntities = repositiry.searchAllByFilter(
+        List<ReservationEntity> allEntities = repository.searchAllByFilter(
                 filter.roomId(),
                 filter.userId(),
                 pageable
@@ -60,12 +62,12 @@ public class ReservationService {
         var entityToSave = mapper.toEntity(reservationToCreate);
         entityToSave.setStatus(ReservationStatus.PENDING);
 
-                var savedEntity = repositiry.save(entityToSave);
+                var savedEntity = repository.save(entityToSave);
         return mapper.toDomain(savedEntity);
     }
 
     public Reservation updateReservation(Long id, Reservation reservationToUpdate) {
-        var reservationEntity = repositiry.findById(id)
+        var reservationEntity = repository.findById(id)
                 .orElseThrow(()->new NoSuchElementException("Not found reservation by id = "+id));
         if(reservationEntity.getStatus()!=ReservationStatus.PENDING){
             throw new IllegalArgumentException("cannot modify reservation status " + reservationEntity.getStatus());
@@ -73,25 +75,25 @@ public class ReservationService {
         if(!reservationToUpdate.endDate().isAfter(reservationToUpdate.startDate())){
             throw new IllegalArgumentException("start should to be before end");
         }
-        var isConflict = isReservationConflict(
+        var isAvailableToApprove = availabilityService.isReservationAvailable(
                 reservationEntity.getRoomId(),
                 reservationEntity.getStartDate(),
                 reservationEntity.getEndDate()
         );
-        if(isConflict)
+        if(!isAvailableToApprove)
             throw new IllegalArgumentException("cannot approve because of conflict ");
 
         var reservationToSave = mapper.toEntity(reservationToUpdate);
         reservationToSave.setId(reservationEntity.getId());
         reservationToSave.setStatus(ReservationStatus.PENDING);
 
-        var updatedReservation = repositiry.save(reservationToSave);
+        var updatedReservation = repository.save(reservationToSave);
         return mapper.toDomain(updatedReservation);
     }
 
     @Transactional
     public void cancelReservation(Long id) {
-        var reservation = repositiry.findById(id)
+        var reservation = repository.findById(id)
                         .orElseThrow(()-> new EntityNotFoundException("Not found reservation by id = "+id));
         if(reservation.getStatus().equals(ReservationStatus.APPROVED)){
             throw new IllegalStateException("can not canceled reservation without manager");
@@ -99,48 +101,30 @@ public class ReservationService {
         if(reservation.getStatus().equals(ReservationStatus.CANCELED)){
             throw new IllegalStateException("can not cancel reservation, it was already cancelled");
         }
-        repositiry.setStatus(id, ReservationStatus.CANCELED);
+        repository.setStatus(id, ReservationStatus.CANCELED);
         log.info("successfully canceled reservation by id "+ id);
     }
 
     public Reservation approveReservation(Long id) {
-        var reservationEntity = repositiry.findById(id)
+        var reservationEntity = repository.findById(id)
                 .orElseThrow(()->new NoSuchElementException("Not found reservation by id = "+id));
 
         if(reservationEntity.getStatus()!=ReservationStatus.PENDING){
             throw new IllegalArgumentException("cannot approve reservation status " + reservationEntity.getStatus());
         }
 
-        var isConflict = isReservationConflict(
+        var isAvailableToApprove = availabilityService.isReservationAvailable(
                 reservationEntity.getRoomId(),
                 reservationEntity.getStartDate(),
                 reservationEntity.getEndDate()
         );
-        if(isConflict)
+        if(!isAvailableToApprove)
             throw new IllegalArgumentException("cannot approve because of conflict ");
 
 
         reservationEntity.setStatus(ReservationStatus.APPROVED);
-        repositiry.save(reservationEntity);
+        repository.save(reservationEntity);
 
         return mapper.toDomain(reservationEntity);
     }
-
-    private boolean isReservationConflict(
-            Long roomId,
-            LocalDate startDate,
-            LocalDate endDate
-    ){
-        List<Long> conflictingIds = repositiry.findConflictReservationIds(
-                roomId,
-                startDate,
-                endDate,
-                ReservationStatus.APPROVED
-        );
-        if(conflictingIds.isEmpty()) return false;
-        log.info("conflict with ids = ",conflictingIds);
-        return true;
-    }
-
-
 }

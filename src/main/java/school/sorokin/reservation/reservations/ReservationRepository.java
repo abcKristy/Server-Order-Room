@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.List;
 
-public interface ReservationRerository extends JpaRepository<ReservationEntity,Long> {
+public interface ReservationRepository extends JpaRepository<ReservationEntity,Long> {
     @Modifying
     @Query("""
             update ReservationEntity r
