@@ -1,4 +1,4 @@
-package school.sorokin.reservation;
+package school.sorokin.reservation.reservations;
 
 public enum ReservationStatus {
     PENDING,

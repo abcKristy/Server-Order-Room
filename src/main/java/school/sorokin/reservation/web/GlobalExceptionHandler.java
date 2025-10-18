@@ -1,4 +1,4 @@
-package school.sorokin.reservation;
+package school.sorokin.reservation.web;
 
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import school.sorokin.reservation.reservations.ReservationController;
 
 import java.time.LocalDate;
 
